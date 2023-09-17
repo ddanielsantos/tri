@@ -1,17 +1,17 @@
-# tri
+# trii
 
 A low-key implementation of the UNIX `tree` command in Rust.
 
 ## Usage
 
 ```
-$ tri [path]
+$ trii [path]
 ```
 
 ## Example
 
 ```
-$ tri src
+$ trii src
 src
 ├── lib.rs
 └── main.rs
@@ -22,5 +22,5 @@ src
 ## Installation
 
 ```
-$ cargo install tri
+$ cargo install trii
 ```

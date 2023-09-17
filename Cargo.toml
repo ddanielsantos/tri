@@ -1,5 +1,5 @@
 [package]
-name = "tri"
+name = "trii"
 description = "A low-key implementation of the UNIX `tree` command in Rust."
 version = "0.1.0"
 edition = "2021"
