@@ -1,7 +1,5 @@
 use std::env;
-use std::fs::{self, ReadDir};
-use std::io::{self, Error, ErrorKind};
-use std::path::PathBuf;
+use std::{fs, io};
 
 trait Exitable {
     fn report_and_exit(&self);
@@ -13,7 +11,7 @@ fn main() -> Result<(), ExecutionError> {
 
     let res = match args {
         Ok(args) => {
-            let exec_result = exec_tri(args);
+            let exec_result = exec_tri(args, 0);
 
             match exec_result {
                 Ok(_) => { () }
@@ -32,7 +30,8 @@ fn main() -> Result<(), ExecutionError> {
 
 #[derive(Debug)]
 struct Args {
-    path: ReadDir,
+    path: String,
+    dir_content: fs::ReadDir,
 }
 
 #[derive(Debug)]
@@ -51,9 +50,6 @@ impl Exitable for ParseError {
             ParseError::NotFound => {
                 std::process::exit(1);
             }
-            unk => {
-                std::process::exit(1);
-            }
         }
     }
 }
@@ -61,7 +57,7 @@ impl Exitable for ParseError {
 impl From<io::Error> for ParseError {
     fn from(value: io::Error) -> Self {
         match value.kind() {
-            ErrorKind::NotFound => {
+            io::ErrorKind::NotFound => {
                 ParseError::NotFound
             }
             e => {
@@ -74,7 +70,6 @@ impl From<io::Error> for ParseError {
 
 #[derive(Debug)]
 enum ExecutionError {
-    InvalidPath
 }
 
 impl Exitable for ExecutionError {
@@ -84,7 +79,7 @@ impl Exitable for ExecutionError {
 }
 
 impl From<io::Error> for ExecutionError {
-    fn from(value: Error) -> Self {
+    fn from(value: io::Error) -> Self {
         todo!()
     }
 }
@@ -96,31 +91,76 @@ fn parse_args(args: Vec<String>) -> Result<Args, ParseError> {
     let result = fs::read_dir(path);
 
     match result {
-        Ok(path) => {
+        Ok(dir_content) => {
+            // TODO! kill the unwrap
             Ok(Args {
-                path,
+                path: path.split("/")
+                    .last()
+                    .unwrap()
+                    .to_string(),
+                dir_content,
             })
-        },
+        }
         Err(_) => {
             Err(ParseError::NotFound)
         }
     }
 }
 
-fn exec_tri(args: Args) -> Result<(), ExecutionError> {
-    let Args { path } = args;
+fn exec_tri(args: Args, level: i32) -> Result<(), ExecutionError> {
+    let Args { path, dir_content } = args;
 
-    for entry in path {
-        let path = entry?.path();
-        let file_name = path.file_name().unwrap();
-        let file_name = file_name.to_str().unwrap();
-        println!("{}", file_name);
+    if level == 0  {
+        println!("{}", path);
+    }
+
+    let mut peekable_dirs = dir_content.peekable();
+
+    while let Some(entry) = peekable_dirs.next() {
+
+        let path = &entry?.path();
+
+        if path.is_dir() {
+            let dir_content = fs::read_dir(path)?;
+            let args = Args {
+                path: path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+                dir_content,
+            };
+
+            exec_tri(args, level + 1)?;
+        }
+
+        if peekable_dirs.peek().is_some() {
+            println!("{}├── {}", get_identation(level), path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap());
+
+            continue;
+        }
+
+        println!("{}└── {}", get_identation(level), path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap())
     }
 
     Ok(())
 }
 
+fn get_identation(level: i32) -> String {
+    let mut identation = String::new();
 
-fn print_recursively(read_dir: &ReadDir) {
-    todo!()
+    for _ in 0..level {
+        identation.push_str("│   ");
+    }
+
+    identation
 }
